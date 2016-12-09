@@ -1,0 +1,197 @@
+---
+title: "Very Solid Dashboard"
+resource_files:
+- .httr-oauth
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r global, include=FALSE}
+## Loading required packages
+library(googlesheets)
+library(flexdashboard)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(shiny)
+library(RColorBrewer)
+
+
+## Fetching data from google sheets
+vsp.sheet.key <- "1O3fqI2pEMS0gKyPA8fb29RwY7SQLUkQGvCVOQun3Ies"
+vsp.document <- vsp.sheet.key %>% gs_key()
+vsp.data <- vsp.document %>%
+  gs_read(ws = "Sheet1") %>%
+  mutate(Date = dmy(Date))
+
+## Basic data type manipulation
+vsp.data$Team <- factor(vsp.data$Team,
+                           levels = c("ATL",
+                                      "BOS",
+                                      "BKN",
+                                      "CHA",
+                                      "CHI",
+                                      "CLE",
+                                      "DAL",
+                                      "DEN",
+                                      "DET",
+                                      "GSW",
+                                      "HOU",
+                                      "IND",
+                                      "LAC",
+                                      "LAL",
+                                      "MEM",
+                                      "MIA",
+                                      "MIL",
+                                      "MIN",
+                                      "NOP",
+                                      "NYK",
+                                      "OKC",
+                                      "ORL",
+                                      "PHI",
+                                      "PHX",
+                                      "POR",
+                                      "SAC",
+                                      "SAS",
+                                      "TOR",
+                                      "UTA",
+                                      "WSH"))  
+
+## Colours List for Teams in Hex (source: http://jim-nielsen.com/teamcolors/)
+teams.colours <- c("#E13A3E",
+                   "#008348",
+                   "#061922",
+                   "#1D1160",
+                   "#CE1141",
+                   "#860038",
+                   "#007DC5",
+                   "#4D90CD",
+                   "#ED174C",
+                   "#FDB927",
+                   "#CE1141",
+                   "#FFC633",
+                   "#ED174C",
+                   "#FDB927",
+                   "#0F586C",
+                   "#98002E",
+                   "#00471B",
+                   "#005083",
+                   "#002B5C",
+                   "#006BB6",
+                   "#007DC3",
+                   "#007DC5",
+                   "#ED174C",
+                   "#E56020",
+                   "#E03A3E",
+                   "#724C9F",
+                   "#BAC3C9",
+                   "#CE1141",
+                   "#002B5C",
+                   "#002B5C")
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+Data is up to date till **`r max(vsp.data$Date)`**
+
+```{r}
+selectInput("chart_type",
+            label = "Choose your chart",
+            choices = c("By Team", "By Pass Type", "By Shot Type", "Does Skeets Like It?"),
+            selected = "By Team")
+```
+
+Outputs
+-----------------------------------------------------------------------
+
+### Very Solid Charts
+
+```{r}
+p_chart_type <- reactive({
+  input$chart_type
+})
+
+renderPlot({
+  
+  ## ggplot command for chart by team
+  if(p_chart_type() == "By Team"){
+    ggplot(vsp.data) +
+    geom_bar(mapping = aes(x = Team,
+                           fill = Team)) +
+    theme_minimal() +
+    scale_fill_manual(values = teams.colours,
+                      drop = FALSE,
+                      guide = FALSE) +
+    labs(x = "Team",
+         y = "Number of VSPs") +
+    theme(axis.text.x = element_text(angle = 45,
+                                     hjust = 1),
+          text = element_text(face = "bold",size = 16))
+  }
+  
+  else
+  
+  ## ggplot command for chart by pass type
+  if(p_chart_type() == "By Pass Type"){
+    
+    colour.count <- length(unique(vsp.data$`Pass Type`))
+    get.palette <- colorRampPalette(brewer.pal(11,'Spectral'))
+    
+    ggplot(vsp.data) +
+    geom_bar(mapping = aes(x = `Pass Type`,
+                           fill = `Pass Type`)) +
+    theme_minimal() + 
+    scale_fill_manual(values = get.palette(colour.count),
+                      guide = FALSE) +
+    labs(x = "Pass Type",
+         y = "Number of VSPs") +
+    theme(axis.text.x = element_text(angle = 45,
+                                     hjust = 1),
+          text = element_text(face = "bold",size = 16)) + 
+    scale_y_continuous(breaks= pretty_breaks())
+  }
+  
+  else
+  
+  ## ggplot command for chart by shot type
+  if(p_chart_type() == "By Shot Type"){
+    ggplot(vsp.data) +
+    geom_bar(mapping = aes(x = `Shot Type`,
+                           fill = `Shot Type`)) +
+    theme_minimal() + 
+    scale_fill_brewer(palette = "Dark2",
+                      guide = FALSE) +
+    labs(x = "Shot Type",
+         y = "Number of VSPs") +
+    theme(axis.text.x = element_text(angle = 45,
+                                     hjust = 1),
+          text = element_text(face = "bold",size = 16)) + 
+    scale_y_continuous(breaks= pretty_breaks())
+  }
+  
+  else
+  
+  ## ggplot command for chart by does skeets like it?
+  if(p_chart_type() == "Does Skeets Like It?"){
+    ggplot(vsp.data) +
+    geom_bar(mapping = aes(x = `Does Skeets Like It?`,
+                           fill = `Does Skeets Like It?`)) +
+    theme_minimal() + 
+    scale_fill_brewer(palette = "Set1",
+                      guide = FALSE) +
+    labs(x = "Does Skeets Like It?",
+         y = "Number of VSPs") +
+    theme(axis.text.x = element_text(angle = 45,
+                                     hjust = 1),
+          text = element_text(face = "bold",size = 16)) + 
+    scale_y_continuous(breaks= pretty_breaks())
+  }
+  
+})
+```
